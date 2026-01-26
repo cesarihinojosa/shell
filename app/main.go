@@ -7,6 +7,56 @@ import (
 	"strings"
 )
 
+type Command interface {
+	Execute(s []string)
+}
+
+var commandRegistry = map[string]Command{
+	"echo": Echo{},
+	"exit": Exit{},
+	"type": Type{},
+}
+
+type InvalidCommand struct{}
+
+func (i InvalidCommand) Execute(s []string) {
+	if len(s) > 0 {
+		fmt.Printf("%v: command not found\n", s[0])
+	} else {
+		fmt.Println()
+	}
+}
+
+type Echo struct{}
+
+func (e Echo) Execute(s []string) {
+	for _, v := range s[1:] {
+		fmt.Print(v, " ") // fix this
+	}
+	fmt.Println()
+}
+
+type Exit struct{}
+
+func (e Exit) Execute(s []string) {
+	os.Exit(0)
+}
+
+type Type struct{}
+
+func (t Type) Execute(s []string) {
+	if len(s) < 2 {
+		fmt.Println("type requires at least one argument") //standardize this later
+		return
+	}
+	_, ok := commandRegistry[s[1]]
+	if !ok {
+		fmt.Printf("%v: not found\n", s[1])
+	} else {
+		fmt.Printf("%v is a shell builtin\n", s[1])
+	}
+}
+
 // Ensures gofmt doesn't remove the "fmt" import in stage 1 (feel free to remove this!)
 var _ = fmt.Print
 
@@ -20,16 +70,13 @@ func main() {
 			input := strings.Fields(scanner.Text())
 			if len(input) == 0 {
 				continue
-			} else if input[0] == "exit" {
-				os.Exit(0)
-			} else if input[0] == "echo" {
-				for _, v := range input[1:] {
-					fmt.Print(v, " ")
-				}
-				fmt.Println()
-			} else {
-				fmt.Printf("%v: command not found\n", input[0])
 			}
+
+			command, ok := commandRegistry[input[0]]
+			if !ok {
+				command = InvalidCommand{}
+			}
+			command.Execute(input)
 		}
 		if err := scanner.Err(); err != nil {
 			fmt.Println("error!")
