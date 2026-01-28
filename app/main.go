@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -51,6 +52,17 @@ func (t Type) Execute(s []string) {
 	}
 	_, ok := commandRegistry[s[1]]
 	if !ok {
+		if _, ok := os.LookupEnv("PATH"); ok {
+			paths := os.Getenv("PATH") // put this into variable??
+			for _, v := range strings.Split(paths, ":") {
+				path := filepath.Join(v, s[1])
+				info, err := os.Stat(path)
+				if err == nil && info.Mode().Perm()&0100 != 0 {
+					fmt.Printf("%v is %v\n", s[1], path)
+					return
+				}
+			}
+		}
 		fmt.Printf("%v: not found\n", s[1])
 	} else {
 		fmt.Printf("%v is a shell builtin\n", s[1])
