@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -18,14 +19,35 @@ var commandRegistry = map[string]Command{
 	"type": Type{},
 }
 
-type InvalidCommand struct{}
+type ExternalProgram struct{}
 
-func (i InvalidCommand) Execute(s []string) {
-	if len(s) > 0 {
-		fmt.Printf("%v: command not found\n", s[0])
-	} else {
-		fmt.Println()
+func (e ExternalProgram) Execute(s []string) {
+	if len(s) <= 0 {
+		return
 	}
+	if _, ok := os.LookupEnv("PATH"); ok { //repeating code with type. fix this
+		paths := os.Getenv("PATH")
+		for _, v := range strings.Split(paths, ":") {
+			path := filepath.Join(v, s[0])
+			info, err := os.Stat(path)
+			if err == nil && info.Mode().Perm()&0100 != 0 {
+				var cmd *exec.Cmd
+				if len(s) == 1 { // do I need this?
+					cmd = exec.Command(s[0])
+				} else {
+					cmd = exec.Command(s[0], s[1:]...)
+				}
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				err := cmd.Run()
+				if err != nil {
+					fmt.Println(err)
+				}
+				return
+			}
+		}
+	}
+	fmt.Printf("%v: command not found\n", s[0])
 }
 
 type Echo struct{}
@@ -86,7 +108,7 @@ func main() {
 
 			command, ok := commandRegistry[input[0]]
 			if !ok {
-				command = InvalidCommand{}
+				command = ExternalProgram{}
 			}
 			command.Execute(input)
 		}
