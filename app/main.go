@@ -107,16 +107,24 @@ func (p Pwd) Execute(s []string) {
 
 type Cd struct{}
 
+// TODO add "-" support and handle no args correctly
 func (c Cd) Execute(s []string) {
 	if len(s) < 2 {
 		fmt.Println("cd requires one argument")
 		return
+	}
+	if s[1] == "~" {
+		s[1] = os.Getenv("HOME")
 	}
 	err := os.Chdir(s[1])
 	if err != nil {
 		fmt.Printf("cd: %v: No such file or directory\n", s[1])
 	}
 }
+
+// func singleQuoteFilter(s []string) []string {
+
+// }
 
 // Ensures gofmt doesn't remove the "fmt" import in stage 1 (feel free to remove this!)
 var _ = fmt.Print
@@ -132,12 +140,11 @@ func main() {
 			if len(input) == 0 {
 				continue
 			}
-
 			command, ok := commandRegistry[input[0]]
 			if !ok {
 				command = ExternalProgram{}
 			}
-			command.Execute(input)
+			command.Execute(input) // strategy pattern
 		}
 		if err := scanner.Err(); err != nil {
 			fmt.Println("error!")
